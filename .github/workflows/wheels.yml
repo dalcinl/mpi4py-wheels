@@ -1,0 +1,72 @@
+name: wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      mpi4py-repo:
+        description: 'mpi4py git repository'
+        default: mpi4py/mpi4py
+        required: false
+      mpi4py-ref:
+        description: 'mpi4py branch, tag or SHA'
+        default: master
+        required: false
+      mpi-name:
+        description: "MPI implementation name"
+        default: 'mpich'
+        required: false
+        type: choice
+        options:
+          - mpich
+          - openmpi
+      mpi-version:
+        description: "MPI version number (x.y[.z])"
+        required: false
+        type: string
+      python-tag:
+        description: "Python tag ('cp39', 'pp39', ...)"
+        required: false
+        default: '*'
+        type: string
+      architecture:
+        description: "Architecture"
+        default: native
+        required: false
+        type: choice
+        options:
+          - x86_64
+          - i686
+          - aarch64
+          - ppc64le
+          - s390x
+          - auto
+          - auto64
+          - auto32
+          - native
+          - all
+
+jobs:
+  linux:
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Build wheels
+      uses: ./
+      with:
+        repository:   ${{ github.event.inputs.mpi4py-repo  }}
+        ref:          ${{ github.event.inputs.mpi4py-ref   }}
+        mpi-name:     ${{ github.event.inputs.mpi-name     }}
+        mpi-version:  ${{ github.event.inputs.mpi-version  }}
+        python-tag:   ${{ github.event.inputs.python-tag   }}
+        architecture: ${{ github.event.inputs.architecture }}
+      env:
+        CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6"
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v3
+      with:
+        name: mpi4py-linux-${{ github.event.inputs.mpi-name }}_${{ github.event.inputs.mpi-version }}
+        path: ./wheelhouse/*.whl

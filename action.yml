@@ -1,0 +1,66 @@
+name: 'mpi4py wheels'
+author: 'Lisandro Dalcin'
+description: 'Build mpi4py wheels'
+
+inputs:
+  repository:
+    description: 'project repository'
+    default: mpi4py/mpi4py
+    required: true
+  ref:
+    description: 'project branch, tag or SHA'
+    default: master
+    required: false
+  mpi-name:
+    description: "MPI name ('mpich' or 'openmpi')"
+    default: 'mpich'
+    required: false
+  mpi-version:
+    description: "MPI version number (major.minor[.micro])"
+    required: false
+  python-tag:
+    description: "Python tag ('cp39', 'pp39', ...)"
+    default: '*'
+    required: false
+  architecture:
+    description: "Architecture ('x86_64', 'aarch64', 'all', ...)"
+    default: native
+    required: false
+  output-dir:
+    description: 'Folder to place outputs in'
+    required: false
+    default: wheelhouse
+
+runs:
+  using: 'composite'
+  steps:
+
+    - id:   checkout-project
+      name: Checkout project
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ inputs.repository }}
+        ref:        ${{ inputs.ref }}
+        path:       project.git
+
+    - id:   setup-qemu
+      name: Setup QEMU
+      if:   runner.os == 'Linux'
+      uses: docker/setup-qemu-action@v1
+      with:
+        platforms: all
+
+    - id:   build-wheels
+      name: Build wheels
+      uses: pypa/cibuildwheel@v2.4.0
+      with:
+        package-dir: project.git
+        output-dir: ${{ inputs.output-dir }}
+      env:
+        CIBW_BUILD: "*${{ inputs.python-tag }}*-manylinux_*"
+        CIBW_ARCHS: "${{ inputs.architecture }}"
+        CIBW_BEFORE_ALL:   "{project}/cibw-before-all.sh"
+        CIBW_TEST_COMMAND: "{project}/cibw-test-command.sh"
+        CIBW_ENVIRONMENT: >
+          MPI_NAME=${{ inputs.mpi-name }}
+          MPI_VERSION=${{ inputs.mpi-version }}
